@@ -298,6 +298,17 @@ def test_url_decode_proofpoint_v3():
     assert url.is_proofpoint_v3 is True
     assert url.child_urls == ["https://link.edgepilot.com/s/822cebfe/5ZxIVsowtUueiP3V0OatBg?u=https://go.microsoft.com/fwlink/?Linkid=844050"]
 
+    # Regression: malformed extractions can include trailing text and another
+    # Proofpoint URL. We should decode the first valid payload instead of
+    # greedily spanning both and exhausting the replacement buffer.
+    url = URL(
+        "https://urldefense.com/v3/__https://domain.com/*foo__;Iw!!asdf!asdf!asdf-asdf$"
+        " trailing text https://urldefense.com/v3/__https://other.com/*bar__;Iw!!asdf!asdf!asdf-asdf$"
+    )
+    assert url.is_proofpoint_v3 is True
+    assert url.decode_proofpoint_v3() == "https://domain.com/#foo"
+
+
 def test_url_get_fragment_values():
     url = URL("https://domain.com/index.php#a=1&b=2&c=3")
     assert url.get_fragment_values() == {"1", "2", "3"}
@@ -433,6 +444,11 @@ def test_urllist_get_all_urls_double_nested():
     }
 
     assert urllist.get_all_urls() == expected_urls
+
+
+def test_urllist_get_all_urls_skips_failed_proofpoint_decode():
+    urllist = URLList([URL("https://urldefense.com/v3/____;")])
+    assert urllist.get_all_urls() == {"https://urldefense.com/v3/____;"}
 
 
 def test_urllist_get_all_urls_empty():
