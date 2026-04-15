@@ -425,16 +425,13 @@ class URL:
 
     def decode_mandrillapp(self) -> str:
         base64_string = self.query_dict["p"][0].replace("_", "/")
-        decoded = base64.b64decode(f"{base64_string}===")
-
         try:
+            decoded = base64.b64decode(f"{base64_string}===")
             outer_json = json.loads(decoded)
             inner_json = json.loads(outer_json["p"])
             possible_url = helpers.fix_possible_url(inner_json["url"])
             return possible_url if URL(possible_url).is_url else ""
-        except json.JSONDecodeError:
-            return ""
-        except UnicodeDecodeError:
+        except (json.JSONDecodeError, UnicodeDecodeError, KeyError, TypeError, binascii.Error):
             return ""
 
     def decode_proofpoint_v2(self) -> str:
